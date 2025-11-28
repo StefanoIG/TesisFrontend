@@ -276,6 +276,147 @@ class ApiClient {
       leida: true,
     });
   }
+
+  // -------------------- CLIENTES --------------------
+  async getClientes(params?: any) {
+    return this.get('/clientes/clientes/', params);
+  }
+
+  async getCliente(id: string) {
+    return this.get(`/clientes/clientes/${id}/`);
+  }
+
+  async createCliente(data: any) {
+    return this.post('/clientes/clientes/', data);
+  }
+
+  async updateCliente(id: string, data: any) {
+    return this.put(`/clientes/clientes/${id}/`, data);
+  }
+
+  async deleteCliente(id: string) {
+    return this.delete(`/clientes/clientes/${id}/`);
+  }
+
+  async getClientesActivos() {
+    return this.get('/clientes/clientes/activos/');
+  }
+
+  async getClienteEstadisticas(id: string) {
+    return this.get(`/clientes/clientes/${id}/estadisticas/`);
+  }
+
+  async getHistorialComprasCliente(id: string) {
+    return this.get(`/clientes/clientes/${id}/historial-compras/`);
+  }
+
+  // -------------------- VENTAS / COTIZACIONES --------------------
+  async getVentas(params?: any) {
+    return this.get('/clientes/ventas/', params);
+  }
+
+  async createVenta(data: any) {
+    return this.post('/clientes/ventas/', data);
+  }
+
+  async updateVenta(id: string, data: any) {
+    return this.put(`/clientes/ventas/${id}/`, data);
+  }
+
+  async cambiarEstadoVenta(id: string, estado: string) {
+    return this.post(`/clientes/ventas/${id}/cambiar_estado/`, { estado });
+  }
+
+  async getVentasPendientes() {
+    return this.get('/clientes/ventas/pendientes/');
+  }
+
+  async getCotizaciones(params?: any) {
+    return this.get('/clientes/cotizaciones/', params);
+  }
+
+  async convertirCotizacionAventa(id: string, numero_venta: string) {
+    return this.post(`/clientes/cotizaciones/${id}/convertir_a_venta/`, { numero_venta });
+  }
+
+  // -------------------- DOCUMENTOS Y FOTOS --------------------
+  async getDocumentos(params?: any) {
+    return this.get('/documentos/documentos/', params);
+  }
+
+  async getDocumento(id: string) {
+    return this.get(`/documentos/documentos/${id}/`);
+  }
+
+  async createDocumento(formData: FormData) {
+    // multipart/form-data
+    const response = await this.client.post('/documentos/documentos/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
+  async updateDocumento(id: string, data: any) {
+    return this.put(`/documentos/documentos/${id}/`, data);
+  }
+
+  async deleteDocumento(id: string) {
+    return this.delete(`/documentos/documentos/${id}/`);
+  }
+
+  async validarDocumento(id: string, data: any) {
+    return this.put(`/documentos/documentos/${id}/validar/`, data);
+  }
+
+  async descargarDocumento(id: string) {
+    // Puede devolver URL o binary según backend
+    const response = await this.client.get(`/documentos/documentos/${id}/descargar/`);
+    return response.data;
+  }
+
+  async getFotos(params?: any) {
+    return this.get('/documentos/fotos/', params);
+  }
+
+  async createFoto(formData: FormData) {
+    const response = await this.client.post('/documentos/fotos/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
+  async getFoto(id: string) {
+    return this.get(`/documentos/fotos/${id}/`);
+  }
+
+  async deleteFoto(id: string) {
+    return this.delete(`/documentos/fotos/${id}/`);
+  }
+
+  // -------------------- LOGÍSTICA - TRACKING --------------------
+  async getTracking(params?: any) {
+    return this.get('/logistica/tracking/', params);
+  }
+
+  async createTracking(data: any) {
+    return this.post('/logistica/tracking/', data);
+  }
+
+  async getTrackingDetalle(id: string) {
+    return this.get(`/logistica/tracking/${id}/`);
+  }
+
+  async updateTracking(id: string, data: any) {
+    return this.put(`/logistica/tracking/${id}/`, data);
+  }
+
+  async deleteTracking(id: string) {
+    return this.delete(`/logistica/tracking/${id}/`);
+  }
+
+  async getEnvioTracking(envioId: string) {
+    return this.get(`/logistica/envios/${envioId}/tracking/`);
+  }
 }
 
 export const apiClient = new ApiClient();

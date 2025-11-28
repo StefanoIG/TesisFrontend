@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter, useSegments, usePathname } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import { View, ActivityIndicator } from 'react-native';
 import { Colors } from '@/constants/theme-new';
@@ -7,6 +7,7 @@ import { Colors } from '@/constants/theme-new';
 export function useProtectedRoute() {
   const { isAuthenticated, checkAuth } = useAuthStore();
   const segments = useSegments();
+  const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
@@ -14,14 +15,19 @@ export function useProtectedRoute() {
   }, []);
 
   useEffect(() => {
-    const inAuthGroup = segments[0] === '(web)' && segments[1] !== 'login';
-    
-    if (!isAuthenticated && inAuthGroup) {
+    // Use pathname for more reliable checks (avoids segment ordering ambiguities)
+    if (!pathname) return;
+
+    const inWebGroup = pathname.startsWith('/(web)');
+    const isLoginPath = pathname.startsWith('/(web)/login') || pathname === '/(web)/login';
+
+    if (!isAuthenticated && inWebGroup && !isLoginPath) {
       // Si no está autenticado y está en una ruta protegida, redirigir al login
-      router.replace('/(web)/login');
-    } else if (isAuthenticated && segments[1] === 'login') {
+      // Defer navigation to avoid attempting navigation before root layout mounts
+      setTimeout(() => router.replace('/(web)/login'), 0);
+    } else if (isAuthenticated && isLoginPath) {
       // Si está autenticado y está en login, redirigir al dashboard
-      router.replace('/(web)');
+      setTimeout(() => router.replace('/(web)'), 0);
     }
   }, [isAuthenticated, segments]);
 }
@@ -33,7 +39,7 @@ export function ProtectedRouteWrapper({ children }: { children: React.ReactNode 
 
   if (!isAuthenticated) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.light }}>
         <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
