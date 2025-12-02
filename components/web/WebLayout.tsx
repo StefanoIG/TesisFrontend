@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import { Colors, Spacing, Typography } from '@/constants/theme-new';
@@ -25,9 +25,12 @@ export default function WebLayout({ children, title, subtitle }: WebLayoutProps)
     { id: 'shipments', icon: 'truck', label: 'Envíos', path: '/(web)/shipments' },
     { id: 'documentos', icon: 'file-document', label: 'Documentos', path: '/(web)/documentos' },
     { id: 'tracking', icon: 'map-marker-path', label: 'Tracking', path: '/(web)/tracking' },
+    { id: 'planificacion', icon: 'sprout', label: 'Planificación', path: '/(web)/planificacion' },
+    { id: 'certificaciones', icon: 'certificate', label: 'Certificaciones', path: '/(web)/certificaciones' },
     { id: 'alerts', icon: 'alert', label: 'Alertas', path: '/(web)/alerts' },
     { id: 'reports', icon: 'chart-bar', label: 'Reportes', path: '/(web)/reports' },
     { id: 'notifications', icon: 'bell', label: 'Notificaciones', path: '/(web)/notifications' },
+    { id: 'administracion', icon: 'cog', label: 'Administración', path: '/(web)/administracion' },
     { id: 'profile', icon: 'account', label: 'Perfil', path: '/(web)/profile' },
   ];
 
@@ -50,7 +53,11 @@ export default function WebLayout({ children, title, subtitle }: WebLayoutProps)
           <Text style={styles.appSubtitle}>Agroindustrial</Text>
         </View>
 
-        <View style={styles.menu}>
+        <ScrollView 
+          style={styles.menuScrollView}
+          contentContainerStyle={styles.menuContent}
+          showsVerticalScrollIndicator={false}
+        >
           {menuItems.map((item) => (
             <TouchableOpacity
               key={item.id}
@@ -67,7 +74,7 @@ export default function WebLayout({ children, title, subtitle }: WebLayoutProps)
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         <View style={styles.sidebarFooter}>
           <View style={styles.userInfo}>
@@ -131,15 +138,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dark,
     borderRightWidth: 1,
     borderRightColor: Colors.lightGray,
-    height: '100%',
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
     position: 'relative',
     zIndex: 10,
-  },
+  } as any,
   sidebarHeader: {
     padding: Spacing.xl,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
+    flexShrink: 0,
   },
   logo: {
     width: 60,
@@ -160,9 +170,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.lightGray,
   },
-  menu: {
+  menuScrollView: {
     flex: 1,
+  },
+  menuContent: {
     paddingVertical: Spacing.lg,
+    paddingBottom: Spacing.xl,
   },
   menuItem: {
     flexDirection: 'row',
@@ -193,6 +206,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexShrink: 0,
   },
   userInfo: {
     flexDirection: 'row',

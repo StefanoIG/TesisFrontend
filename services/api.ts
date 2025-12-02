@@ -417,6 +417,187 @@ class ApiClient {
   async getEnvioTracking(envioId: string) {
     return this.get(`/logistica/envios/${envioId}/tracking/`);
   }
+
+  // -------------------- PLANIFICACIÓN --------------------
+  
+  // Fincas (Granjas)
+  async getFincas(params?: any) {
+    return this.get('/usuarios/fincas/', params);
+  }
+
+  async getFinca(id: string) {
+    return this.get(`/usuarios/fincas/${id}/`);
+  }
+
+  // Estudios de Suelo
+  async getEstudiosSuelo(params?: any) {
+    return this.get('/planificacion/estudios-suelo/', params);
+  }
+
+  async createEstudioSuelo(formData: FormData) {
+    // multipart/form-data con archivo PDF
+    const response = await this.client.post('/planificacion/estudios-suelo/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
+  async getEstudioSuelo(id: string) {
+    return this.get(`/planificacion/estudios-suelo/${id}/`);
+  }
+
+  async updateEstudioSuelo(id: string, data: any) {
+    return this.put(`/planificacion/estudios-suelo/${id}/`, data);
+  }
+
+  async deleteEstudioSuelo(id: string) {
+    return this.delete(`/planificacion/estudios-suelo/${id}/`);
+  }
+
+  // Parcelas
+  async getParcelas(params?: any) {
+    return this.get('/planificacion/parcelas/', params);
+  }
+
+  async getParcelasByFinca(fincaId: string) {
+    return this.get(`/planificacion/parcelas/por_finca/?finca_id=${fincaId}`);
+  }
+
+  async getParcela(id: string) {
+    return this.get(`/planificacion/parcelas/${id}/`);
+  }
+
+  async createParcela(data: any) {
+    return this.post('/planificacion/parcelas/', data);
+  }
+
+  async updateParcela(id: string, data: any) {
+    return this.put(`/planificacion/parcelas/${id}/`, data);
+  }
+
+  async updateGeometriaParcela(id: string, data: { coordenadas_geojson: any; geometria_svg?: string }) {
+    return this.post(`/planificacion/parcelas/${id}/actualizar_geometria/`, data);
+  }
+
+  async dividirParcela(id: string, divisiones: any[]) {
+    return this.post(`/planificacion/parcelas/${id}/dividir_parcela/`, { divisiones });
+  }
+
+  // Catálogo de Cultivos
+  async getCultivos(params?: any) {
+    return this.get('/planificacion/catalogos-cultivos/', params);
+  }
+
+  async getCultivo(id: string) {
+    return this.get(`/planificacion/catalogos-cultivos/${id}/`);
+  }
+
+  // Recomendaciones de Cultivos
+  async recomendarCultivos(data: {
+    parcela_ids: string[];
+    prioridad?: 'rentabilidad' | 'facilidad' | 'mercado';
+    cultivo_preferido?: string;
+    area_geografica?: any;
+  }) {
+    return this.post('/planificacion/catalogos-cultivos/recomendar_cultivos/', data);
+  }
+
+  // Planes de Cultivo
+  async getPlanesCultivo(params?: any) {
+    return this.get('/planificacion/planes-cultivo/', params);
+  }
+
+  async getPlanCultivo(id: string) {
+    return this.get(`/planificacion/planes-cultivo/${id}/`);
+  }
+
+  async createPlanCultivo(data: any) {
+    return this.post('/planificacion/planes-cultivo/', data);
+  }
+
+  async createPlanAutomatico(data: {
+    parcela_id: string;
+    cultivo_id: string;
+    fecha_inicio?: string;
+    variedad?: string;
+  }) {
+    return this.post('/planificacion/planes-cultivo/crear_plan_automatico/', data);
+  }
+
+  async updatePlanCultivo(id: string, data: any) {
+    return this.put(`/planificacion/planes-cultivo/${id}/`, data);
+  }
+
+  async deletePlanCultivo(id: string) {
+    return this.delete(`/planificacion/planes-cultivo/${id}/`);
+  }
+
+  // -------------------- CERTIFICACIONES --------------------
+  async getCertificaciones(params?: any) {
+    return this.get('/certificaciones/certificaciones/', params);
+  }
+
+  async getCertificacion(id: string) {
+    return this.get(`/certificaciones/certificaciones/${id}/`);
+  }
+
+  async createCertificacion(data: any) {
+    return this.post('/certificaciones/certificaciones/', data);
+  }
+
+  async updateCertificacion(id: string, data: any) {
+    return this.put(`/certificaciones/certificaciones/${id}/`, data);
+  }
+
+  async deleteCertificacion(id: string) {
+    return this.delete(`/certificaciones/certificaciones/${id}/`);
+  }
+
+  // Certificaciones de Productores
+  async getCertificacionesProductores(params?: any) {
+    return this.get('/certificaciones/certificaciones-productores/', params);
+  }
+
+  async getCertificacionProductor(id: string) {
+    return this.get(`/certificaciones/certificaciones-productores/${id}/`);
+  }
+
+  async createCertificacionProductor(data: any) {
+    return this.post('/certificaciones/certificaciones-productores/', data);
+  }
+
+  async updateCertificacionProductor(id: string, data: any) {
+    return this.put(`/certificaciones/certificaciones-productores/${id}/`, data);
+  }
+
+  async deleteCertificacionProductor(id: string) {
+    return this.delete(`/certificaciones/certificaciones-productores/${id}/`);
+  }
+
+  async getCertificacionesPorVencer() {
+    return this.get('/certificaciones/certificaciones-productores/por_vencer/');
+  }
+
+  // -------------------- ADMINISTRACIÓN --------------------
+  async getConfiguracionSistema() {
+    return this.get('/administracion/configuracion/');
+  }
+
+  async updateConfiguracionSistema(data: any) {
+    return this.put('/administracion/configuracion/1/', data);
+  }
+
+  async getLogsAcceso(params?: any) {
+    return this.get('/administracion/logs-acceso/', params);
+  }
+
+  async getLogsActividad(params?: any) {
+    return this.get('/administracion/logs-actividad/', params);
+  }
+
+  async getBackups(params?: any) {
+    return this.get('/administracion/backups/', params);
+  }
 }
 
 export const apiClient = new ApiClient();
