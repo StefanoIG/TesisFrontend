@@ -8,39 +8,73 @@ type Props = {
 };
 
 export default function PlanificacionMapPicker({ onSelectArea }: Props) {
-  const mapRef = useRef<any>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const polylineRef = useRef<any>(null);
+  const polygonRef = useRef<any>(null);
+  
   const [isDrawing, setIsDrawing] = useState(false);
   const [selectedArea, setSelectedArea] = useState<any>(null);
-  const [drawingPoints, setDrawingPoints] = useState<any[]>([]);
+  const [drawingPoints, setDrawingPoints] = useState<[number, number][]>([]);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Cargar Leaflet dinámicamente solo en web
-      const loadLeaflet = async () => {
-        // Cargar CSS de Leaflet
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        document.head.appendChild(link);
-
-        // Cargar Leaflet JS
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        script.onload = () => initMap();
-        document.body.appendChild(script);
-      };
-
       loadLeaflet();
     }
   }, []);
 
+  const loadLeaflet = async () => {
+    console.log('📦 Cargando Leaflet...');
+    
+    // Cargar CSS de Leaflet
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+      console.log('✅ CSS de Leaflet cargado');
+    }
+
+    // Cargar Leaflet JS
+    if (!(window as any).L) {
+      console.log('📥 Descargando script de Leaflet...');
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.onload = () => {
+        console.log('✅ Script de Leaflet cargado');
+        setTimeout(initMap, 100); // Esperar un poco para que Leaflet se inicialice
+      };
+      script.onerror = () => {
+        console.error('❌ Error cargando script de Leaflet');
+      };
+      document.body.appendChild(script);
+    } else {
+      console.log('✅ Leaflet ya estaba cargado');
+      initMap();
+    }
+  };
+
   const initMap = () => {
-    if (mapRef.current && (window as any).L) {
-      const L = (window as any).L;
-      
+    console.log('🗺️ Intentando inicializar mapa...');
+    console.log('  - Container ref:', !!mapContainerRef.current);
+    console.log('  - Ya existe instancia:', !!mapInstanceRef.current);
+    
+    if (!mapContainerRef.current || mapInstanceRef.current) return;
+    
+    const L = (window as any).L;
+    console.log('  - Leaflet disponible:', !!L);
+    if (!L) return;
+
+    try {
       // Crear mapa centrado en Manabí, Ecuador
-      // Coordenadas aproximadas de Portoviejo, Manabí
-      const map = L.map(mapRef.current).setView([-1.0543, -80.4558], 10);
+      const map = L.map(mapContainerRef.current, {
+        center: [-1.0543, -80.4558], // Portoviejo, Manabí
+        zoom: 10,
+        zoomControl: true,
+      });
 
       // Agregar capa de OpenStreetMap
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -48,51 +82,86 @@ export default function PlanificacionMapPicker({ onSelectArea }: Props) {
         maxZoom: 19,
       }).addTo(map);
 
-      // Variable para almacenar el polígono dibujado
-      let drawnPolygon: any = null;
-      let tempPolyline: any = null;
-      let points: any[] = [];
+      mapInstanceRef.current = map;
+      setMapReady(true);
 
-      // Manejar clics en el mapa para dibujar polígono
-      map.on('click', (e: any) => {
-        if (isDrawing) {
-          const { lat, lng } = e.latlng;
-          points.push([lat, lng]);
-          setDrawingPoints([...points]);
-
-          // Actualizar línea temporal
-          if (tempPolyline) {
-            map.removeLayer(tempPolyline);
-          }
-          
-          if (points.length > 1) {
-            tempPolyline = L.polyline(points, {
-              color: Colors.primary,
-              weight: 2,
-              dashArray: '5, 5'
-            }).addTo(map);
-          }
-
-          // Agregar marcador
-          L.circleMarker([lat, lng], {
-            radius: 5,
-            fillColor: Colors.primary,
-            color: Colors.white,
-            weight: 2,
-            fillOpacity: 1
-          }).addTo(map);
-        }
-      });
-
-      // Guardar referencia del mapa
-      (mapRef.current as any).leafletMap = map;
+      console.log('✅✅✅ Mapa inicializado correctamente');
+    } catch (error) {
+      console.error('❌❌❌ Error inicializando mapa:', error);
     }
   };
 
   const handleStartDrawing = () => {
+    if (!mapReady || !mapInstanceRef.current) {
+      alert('El mapa aún no está listo. Por favor espera un momento.');
+      console.log('❌ Map not ready:', { mapReady, hasMapInstance: !!mapInstanceRef.current });
+      return;
+    }
+
+    console.log('✅ Iniciando modo de dibujo');
     setIsDrawing(true);
     setDrawingPoints([]);
     setSelectedArea(null);
+    clearMapDrawings();
+
+    const L = (window as any).L;
+    const map = mapInstanceRef.current;
+
+    // Handler para clics en el mapa usando refs para evitar closures
+    const handleMapClick = (e: any) => {
+      console.log('🖱️ Click detectado en mapa:', e.latlng);
+      
+      const { lat, lng } = e.latlng;
+      const newPoint: [number, number] = [lat, lng];
+      
+      // Usar callback de setState para obtener el valor actualizado
+      setDrawingPoints(prevPoints => {
+        const newPoints = [...prevPoints, newPoint];
+        console.log(`📍 Punto ${newPoints.length} agregado:`, { lat, lng });
+        
+        // Crear marcador visual
+        const marker = L.circleMarker([lat, lng], {
+          radius: 6,
+          fillColor: Colors.primary,
+          color: Colors.white,
+          weight: 2,
+          fillOpacity: 1
+        }).addTo(map);
+        
+        // Agregar número al marcador
+        const icon = L.divIcon({
+          html: `<div style="background: ${Colors.primary}; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white;">${newPoints.length}</div>`,
+          className: '',
+          iconSize: [24, 24],
+        });
+        
+        const numberMarker = L.marker([lat, lng], { icon }).addTo(map);
+        markersRef.current.push(marker, numberMarker);
+
+        // Actualizar línea temporal si hay más de 1 punto
+        if (newPoints.length > 1) {
+          // Remover polyline anterior
+          if (polylineRef.current) {
+            map.removeLayer(polylineRef.current);
+          }
+          
+          // Crear nueva polyline
+          polylineRef.current = L.polyline(newPoints, {
+            color: Colors.primary,
+            weight: 3,
+            dashArray: '10, 5',
+            opacity: 0.7
+          }).addTo(map);
+        }
+
+        return newPoints;
+      });
+    };
+
+    console.log('🎯 Agregando listener de click al mapa');
+    // Agregar listener de clic
+    map.on('click', handleMapClick);
+    (map as any)._clickHandler = handleMapClick; // Guardar referencia para remover después
   };
 
   const handleFinishDrawing = () => {
@@ -101,79 +170,142 @@ export default function PlanificacionMapPicker({ onSelectArea }: Props) {
       return;
     }
 
-    setIsDrawing(false);
-
     const L = (window as any).L;
-    const map = (mapRef.current as any)?.leafletMap;
+    const map = mapInstanceRef.current;
 
     if (map && L) {
-      // Cerrar el polígono
-      const closedPoints = [...drawingPoints, drawingPoints[0]];
-      
+      // Remover listener de clic
+      if ((map as any)._clickHandler) {
+        map.off('click', (map as any)._clickHandler);
+      }
+
+      // Remover polyline temporal
+      if (polylineRef.current) {
+        map.removeLayer(polylineRef.current);
+        polylineRef.current = null;
+      }
+
       // Crear polígono final
-      const polygon = L.polygon(drawingPoints, {
+      polygonRef.current = L.polygon(drawingPoints, {
         color: Colors.primary,
-        weight: 2,
+        weight: 3,
         fillColor: Colors.primary,
-        fillOpacity: 0.3
+        fillOpacity: 0.2,
+        dashArray: '0'
       }).addTo(map);
 
-      // Convertir a GeoJSON
+      // Ajustar vista al polígono
+      map.fitBounds(polygonRef.current.getBounds(), { padding: [50, 50] });
+
+      // Convertir a GeoJSON (formato estándar: [lng, lat])
+      const closedPoints = [...drawingPoints, drawingPoints[0]];
       const geojson = {
         type: 'Polygon',
-        coordinates: [closedPoints.map((p: any) => [p[1], p[0]])] // [lng, lat]
+        coordinates: [closedPoints.map((p: [number, number]) => [p[1], p[0]])]
       };
 
       setSelectedArea(geojson);
+      setIsDrawing(false);
       
       if (onSelectArea) {
         onSelectArea(geojson);
       }
 
-      // Limpiar línea temporal
-      map.eachLayer((layer: any) => {
-        if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
-          map.removeLayer(layer);
-        }
-      });
+      console.log('Área finalizada:', geojson);
     }
   };
 
   const handleReset = () => {
+    const map = mapInstanceRef.current;
+    
+    if (map) {
+      // Remover listener de clic
+      if ((map as any)._clickHandler) {
+        map.off('click', (map as any)._clickHandler);
+      }
+    }
+
+    clearMapDrawings();
     setIsDrawing(false);
     setDrawingPoints([]);
     setSelectedArea(null);
 
-    const map = (mapRef.current as any)?.leafletMap;
-    if (map && (window as any).L) {
-      const L = (window as any).L;
-      
-      // Limpiar todos los polígonos y marcadores
-      map.eachLayer((layer: any) => {
-        if (layer instanceof L.Polygon || 
-            layer instanceof L.Polyline || 
-            layer instanceof L.CircleMarker) {
-          map.removeLayer(layer);
-        }
-      });
+    console.log('Mapa limpiado');
+  };
+
+  const clearMapDrawings = () => {
+    const L = (window as any).L;
+    const map = mapInstanceRef.current;
+
+    if (!map || !L) return;
+
+    // Limpiar marcadores
+    markersRef.current.forEach(marker => {
+      if (map.hasLayer(marker)) {
+        map.removeLayer(marker);
+      }
+    });
+    markersRef.current = [];
+
+    // Limpiar polyline
+    if (polylineRef.current && map.hasLayer(polylineRef.current)) {
+      map.removeLayer(polylineRef.current);
+      polylineRef.current = null;
     }
+
+    // Limpiar polígono
+    if (polygonRef.current && map.hasLayer(polygonRef.current)) {
+      map.removeLayer(polygonRef.current);
+      polygonRef.current = null;
+    }
+
+    // Limpiar todos los marcadores con íconos personalizados
+    map.eachLayer((layer: any) => {
+      if (layer instanceof L.Marker && !(layer instanceof L.CircleMarker)) {
+        map.removeLayer(layer);
+      }
+    });
   };
 
   return (
     <View>
       <View style={styles.header}>
         <Text style={styles.label}>Mapa de Manabí, Ecuador</Text>
+        
+        {/* Debug info */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: mapReady ? Colors.success : Colors.danger }} />
+            <Text style={{ fontSize: 11, color: Colors.textMuted }}>
+              Mapa: {mapReady ? 'Listo' : 'Cargando'}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: isDrawing ? Colors.primary : Colors.gray }} />
+            <Text style={{ fontSize: 11, color: Colors.textMuted }}>
+              Dibujando: {isDrawing ? 'Sí' : 'No'}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 11, color: Colors.textMuted }}>
+            Puntos: {drawingPoints.length}
+          </Text>
+        </View>
+
         <View style={styles.buttonGroup}>
           {!isDrawing ? (
-            <TouchableOpacity style={styles.startBtn} onPress={handleStartDrawing}>
+            <TouchableOpacity 
+              style={[styles.startBtn, !mapReady && styles.disabledBtn]} 
+              onPress={handleStartDrawing}
+              disabled={!mapReady}
+            >
               <MaterialCommunityIcons name="pencil" size={16} color={Colors.white} />
-              <Text style={styles.btnText}>Dibujar Área</Text>
+              <Text style={styles.btnText}>{mapReady ? 'Dibujar Área' : 'Cargando...'}</Text>
             </TouchableOpacity>
           ) : (
             <>
               <TouchableOpacity style={styles.finishBtn} onPress={handleFinishDrawing}>
                 <MaterialCommunityIcons name="check" size={16} color={Colors.white} />
-                <Text style={styles.btnText}>Finalizar</Text>
+                <Text style={styles.btnText}>Finalizar ({drawingPoints.length})</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.cancelBtn} onPress={handleReset}>
                 <MaterialCommunityIcons name="close" size={16} color={Colors.white} />
@@ -188,7 +320,7 @@ export default function PlanificacionMapPicker({ onSelectArea }: Props) {
         <View style={styles.instructions}>
           <MaterialCommunityIcons name="information" size={16} color={Colors.info} />
           <Text style={styles.instructionText}>
-            Haz clic en el mapa para marcar los puntos del área. Mínimo 3 puntos.
+            Haz clic en el mapa para marcar los puntos del área (mínimo 3 puntos). Puntos marcados: {drawingPoints.length}
           </Text>
         </View>
       )}
@@ -203,7 +335,7 @@ export default function PlanificacionMapPicker({ onSelectArea }: Props) {
       )}
 
       <div 
-        ref={mapRef} 
+        ref={mapContainerRef} 
         style={styles.mapContainer as any}
       />
 
@@ -241,6 +373,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.sm || 6,
+  },
+  disabledBtn: {
+    opacity: 0.5,
   },
   finishBtn: {
     flexDirection: 'row',
@@ -296,5 +431,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     border: `2px solid ${Colors.lightGray}`,
     overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
   } as any,
 });

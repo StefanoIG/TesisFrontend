@@ -28,10 +28,17 @@ export default function PlanificacionScreen() {
 
   const fetchFincas = async () => {
     try {
+      console.log('🏡 Cargando fincas...');
       const data: any = await apiClient.getFincas();
-      setFincas(data.results || data || []);
+      const fincasList = data.results || data || [];
+      console.log('🏡 Fincas recibidas:', fincasList.length, 'fincas');
+      setFincas(fincasList);
+      
+      if (fincasList.length === 0) {
+        console.warn('⚠️ No hay fincas disponibles. Ejecute generate_initial_data.py');
+      }
     } catch (err) {
-      console.error('Error fetching fincas', err);
+      console.error('❌ Error fetching fincas:', err);
       alert('Error al cargar fincas: ' + err);
     }
   };
@@ -39,10 +46,16 @@ export default function PlanificacionScreen() {
   const fetchParcelas = async (fincaId: string) => {
     setLoading(true);
     try {
+      console.log('📍 Cargando parcelas para finca:', fincaId);
       const data: any = await apiClient.getParcelasByFinca(fincaId);
+      console.log('📍 Parcelas recibidas:', data);
       setParcelas(data || []);
+      
+      if (!data || data.length === 0) {
+        console.warn('⚠️ No hay parcelas disponibles para esta finca');
+      }
     } catch (err) {
-      console.error('Error fetching parcelas', err);
+      console.error('❌ Error fetching parcelas:', err);
       alert('Error al cargar parcelas');
     } finally { 
       setLoading(false); 
@@ -50,15 +63,23 @@ export default function PlanificacionScreen() {
   };
 
   const toggleParcela = (id: string) => {
+    console.log('✅ Toggling parcela:', id);
     setSelectedParcelas((prev) => {
-      if (prev.includes(id)) {
-        return prev.filter((p) => p !== id);
-      }
-      return [...prev, id];
+      const newSelection = prev.includes(id) 
+        ? prev.filter((p) => p !== id)
+        : [...prev, id];
+      console.log('  Parcelas seleccionadas:', newSelection);
+      return newSelection;
     });
   };
 
   const handleGenerateRecommendations = async () => {
+    console.log('🎯 Generando recomendaciones...');
+    console.log('  - Parcelas seleccionadas:', selectedParcelas);
+    console.log('  - Prioridad:', prioridad);
+    console.log('  - Cultivo preferido:', cultivoPreferido);
+    console.log('  - Área geográfica:', areaGeo);
+    
     if (selectedParcelas.length === 0) {
       alert('Seleccione al menos una parcela');
       return;
@@ -70,17 +91,37 @@ export default function PlanificacionScreen() {
     try {
       const payload: any = {
         parcela_ids: selectedParcelas,
-        prioridad,
-        cultivo_preferido: cultivoPreferido || undefined,
-        area_geografica: areaGeo,
+        prioridad: prioridad,
       };
 
+      // Solo agregar cultivo_preferido si tiene valor
+      if (cultivoPreferido && cultivoPreferido.trim()) {
+        payload.cultivo_preferido = cultivoPreferido.trim();
+      }
+
+      // Solo agregar area_geografica si existe
+      if (areaGeo) {
+        payload.area_geografica = areaGeo;
+      }
+
+      console.log('📤 Enviando payload:', JSON.stringify(payload, null, 2));
+
       const result = await apiClient.recomendarCultivos(payload);
+      console.log('✅ Resultado recibido:', result);
+      
       setRecomendaciones(result);
       setShowResults(true);
-    } catch (err) {
-      console.error('Error generando recomendaciones', err);
-      alert('Error al generar recomendaciones: ' + (err as any)?.response?.data?.error || err);
+    } catch (err: any) {
+      console.error('❌ Error generando recomendaciones:', err);
+      console.error('  - Response:', err?.response);
+      console.error('  - Data:', err?.response?.data);
+      
+      const errorMsg = err?.response?.data?.error 
+        || err?.response?.data?.detail
+        || err?.message 
+        || 'Error desconocido';
+      
+      alert('Error al generar recomendaciones: ' + errorMsg);
     } finally { 
       setLoading(false); 
     }
@@ -230,11 +271,23 @@ export default function PlanificacionScreen() {
 
               {selectedFinca && (
                 <View style={{ marginTop: Spacing.md }}>
-                  <Text style={styles.label}>Parcelas Disponibles</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.label}>Parcelas Disponibles</Text>
+                    {selectedParcelas.length > 0 && (
+                      <Text style={{ color: Colors.success, fontWeight: '600' }}>
+                        {selectedParcelas.length} seleccionada{selectedParcelas.length > 1 ? 's' : ''}
+                      </Text>
+                    )}
+                  </View>
                   {loading ? (
                     <ActivityIndicator size="small" color={Colors.primary} />
                   ) : parcelas.length === 0 ? (
-                    <Text style={styles.emptyText}>No hay parcelas en esta finca</Text>
+                    <View>
+                      <Text style={styles.emptyText}>No hay parcelas en esta finca</Text>
+                      <Text style={[styles.hint, { color: Colors.warning }]}>
+                        💡 Ejecute el script generate_initial_data.py para crear datos de prueba
+                      </Text>
+                    </View>
                   ) : (
                     <View>
                       {parcelas.map((parcela) => (
@@ -298,7 +351,10 @@ export default function PlanificacionScreen() {
                 <TouchableOpacity
                   key={p.value}
                   style={[styles.prioridadButton, prioridad === p.value && styles.prioridadButtonActive]}
-                  onPress={() => setPrioridad(p.value as any)}
+                  onPress={() => {
+                    console.log('Seleccionando prioridad:', p.value);
+                    setPrioridad(p.value as 'rentabilidad' | 'facilidad' | 'mercado');
+                  }}
                 >
                   <MaterialCommunityIcons 
                     name={p.icon as any} 
@@ -316,7 +372,10 @@ export default function PlanificacionScreen() {
 
         {/* Botón para generar recomendaciones */}
         <TouchableOpacity
-          style={[styles.generateButton, loading && styles.generateButtonDisabled]}
+          style={[
+            styles.generateButton, 
+            (loading || selectedParcelas.length === 0) && styles.generateButtonDisabled
+          ]}
           onPress={handleGenerateRecommendations}
           disabled={loading || selectedParcelas.length === 0}
         >
@@ -325,10 +384,20 @@ export default function PlanificacionScreen() {
           ) : (
             <>
               <MaterialCommunityIcons name="lightbulb-on" size={20} color={Colors.white} />
-              <Text style={styles.generateButtonText}>Generar Recomendaciones</Text>
+              <Text style={styles.generateButtonText}>
+                {selectedParcelas.length === 0 
+                  ? 'Seleccione parcelas primero' 
+                  : 'Generar Recomendaciones'}
+              </Text>
             </>
           )}
         </TouchableOpacity>
+
+        {selectedParcelas.length === 0 && (
+          <Text style={[styles.hint, { textAlign: 'center', color: Colors.warning, marginTop: -Spacing.md }]}>
+            💡 Debe seleccionar al menos una parcela para generar recomendaciones
+          </Text>
+        )}
 
         {/* Resultados */}
         {showResults && recomendaciones && (
