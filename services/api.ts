@@ -425,8 +425,24 @@ class ApiClient {
     return this.get('/usuarios/fincas/', params);
   }
 
+  async getFincaById(id: string) {
+    return this.get(`/usuarios/fincas/${id}/`);
+  }
+
   async getFinca(id: string) {
     return this.get(`/usuarios/fincas/${id}/`);
+  }
+
+  async createFinca(data: any) {
+    return this.post('/usuarios/fincas/', data);
+  }
+
+  async updateFinca(id: string, data: any) {
+    return this.put(`/usuarios/fincas/${id}/`, data);
+  }
+
+  async deleteFinca(id: string) {
+    return this.delete(`/usuarios/fincas/${id}/`);
   }
 
   // Estudios de Suelo
@@ -473,6 +489,10 @@ class ApiClient {
 
   async updateParcela(id: string, data: any) {
     return this.put(`/planificacion/parcelas/${id}/`, data);
+  }
+
+  async deleteParcela(id: string) {
+    return this.delete(`/planificacion/parcelas/${id}/`);
   }
 
   async updateGeometriaParcela(id: string, data: { coordenadas_geojson: any; geometria_svg?: string }) {

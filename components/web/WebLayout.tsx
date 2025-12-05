@@ -21,6 +21,7 @@ export default function WebLayout({ children, title, subtitle }: WebLayoutProps)
     { id: 'dashboard', icon: 'view-dashboard', label: 'Dashboard', path: '/(web)' },
     { id: 'trazabilidad', icon: 'package-variant', label: 'Trazabilidad', path: '/(web)/trazabilidad' },
     { id: 'products', icon: 'fruit-grapes', label: 'Productos', path: '/(web)/products' },
+    { id: 'fincas', icon: 'barn', label: 'Gestión de Fincas', path: '/(web)/fincas' },
     { id: 'clientes', icon: 'account-multiple', label: 'Clientes', path: '/(web)/clientes' },
     { id: 'shipments', icon: 'truck', label: 'Envíos', path: '/(web)/shipments' },
     { id: 'documentos', icon: 'file-document', label: 'Documentos', path: '/(web)/documentos' },

@@ -38,17 +38,48 @@ export interface Empresa {
   actualizado_en: string;
 }
 
+export interface Coordenada {
+  latitud: number;
+  longitud: number;
+}
+
 export interface Finca {
   id: string;
   empresa_id: string;
   nombre: string;
-  ubicacion: {
-    latitud: number;
-    longitud: number;
-  };
-  area_hectareas: number;
+  ubicacion: Coordenada;
+  area_km2: number;
+  area_hectareas?: number; // para compatibilidad
+  descripcion?: string;
+  tipo_cultivo?: string;
   fecha_creacion: string;
   es_activa: boolean;
+  actualizado_en?: string;
+  geometria?: {
+    type: string;
+    coordinates: [number, number][];
+  };
+}
+
+export interface Parcela {
+  id: string;
+  finca_id: string;
+  nombre: string;
+  numero_parcela?: string;
+  area_m2: number;
+  area_km2?: number;
+  ubicacion: Coordenada;
+  geometria?: {
+    type: string;
+    coordinates: [number, number][];
+  };
+  cultivo_actual?: string;
+  fecha_siembra?: string;
+  estado?: 'activa' | 'en_descanso' | 'preparacion';
+  descripcion?: string;
+  fecha_creacion: string;
+  es_activa: boolean;
+  actualizado_en?: string;
 }
 
 // ============ TRAZABILIDAD ============
@@ -229,6 +260,20 @@ export interface EnvioState {
 export interface NotificacionState {
   notificaciones: Notificacion[];
   noLeidasCount: number;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export interface FincaState {
+  fincas: Finca[];
+  currentFinca: Finca | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export interface ParcelaState {
+  parcelas: Parcela[];
+  currentParcela: Parcela | null;
   isLoading: boolean;
   error: string | null;
 }
