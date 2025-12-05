@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView, ActivityIndicator, Modal, FlatList } from 'react-native';
 import { Colors, Spacing, BorderRadius } from '@/constants/theme-new';
 import { apiClient } from '@/services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,10 +10,23 @@ type Props = {
   onSuccess?: () => void;
 };
 
+const TIPOS_TEXTURA = [
+  { label: 'Arenoso', value: 'ARENOSO' },
+  { label: 'Limoso', value: 'LIMOSO' },
+  { label: 'Arcilloso', value: 'ARCILLOSO' },
+  { label: 'Franco', value: 'FRANCO' },
+  { label: 'Franco Arenoso', value: 'FRANCO_ARENOSO' },
+  { label: 'Franco Arcilloso', value: 'FRANCO_ARCILLOSO' },
+  { label: 'Franco Limoso', value: 'FRANCO_LIMOSO' },
+  { label: 'Otro (especificar)', value: 'OTRO' },
+];
+
 export default function SoilStudyUpload({ fincaId, parcelaId, onSuccess }: Props) {
   const [uploading, setUploading] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showTexturaModal, setShowTexturaModal] = useState(false);
+  const [texturaCustom, setTexturaCustom] = useState('');
   
   const [formData, setFormData] = useState({
     nombre: '',
@@ -41,6 +54,17 @@ export default function SoilStudyUpload({ fincaId, parcelaId, onSuccess }: Props
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSelectTextura = (textura: string) => {
+    if (textura === 'OTRO') {
+      setShowTexturaModal(false);
+      // No cambiar el valor, dejar que el usuario escriba uno personalizado
+      return;
+    }
+    setFormData(prev => ({ ...prev, textura }));
+    setShowTexturaModal(false);
+    setTexturaCustom('');
   };
 
   const handleFileSelect = () => {
@@ -198,13 +222,29 @@ export default function SoilStudyUpload({ fincaId, parcelaId, onSuccess }: Props
             </View>
 
             <View style={[styles.formGroup, { flex: 1, marginLeft: Spacing.md }]}>
-              <Text style={styles.label}>Textura</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ej: Franco"
-                value={formData.textura}
-                onChangeText={(val) => handleInputChange('textura', val)}
-              />
+              <Text style={styles.label}>Textura *</Text>
+              <TouchableOpacity
+                style={[styles.input, styles.selectButton]}
+                onPress={() => setShowTexturaModal(true)}
+              >
+                <Text style={[styles.selectButtonText, !formData.textura && styles.placeholder]}>
+                  {formData.textura ? TIPOS_TEXTURA.find(t => t.value === formData.textura)?.label : 'Seleccionar textura'}
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.gray} />
+              </TouchableOpacity>
+              {formData.textura === 'OTRO' && (
+                <TextInput
+                  style={[styles.input, { marginTop: Spacing.sm }]}
+                  placeholder="Especificar tipo de textura..."
+                  value={texturaCustom}
+                  onChangeText={setTexturaCustom}
+                  onBlur={() => {
+                    if (texturaCustom.trim()) {
+                      setFormData(prev => ({ ...prev, textura: texturaCustom }));
+                    }
+                  }}
+                />
+              )}
             </View>
           </View>
 
@@ -482,6 +522,52 @@ export default function SoilStudyUpload({ fincaId, parcelaId, onSuccess }: Props
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Modal de Selección de Textura */}
+      <Modal
+        visible={showTexturaModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowTexturaModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar Tipo de Textura</Text>
+              <TouchableOpacity onPress={() => setShowTexturaModal(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={Colors.dark} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={TIPOS_TEXTURA}
+              keyExtractor={(item) => item.value}
+              scrollEnabled={true}
+              style={styles.modalList}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.texturaOption,
+                    formData.textura === item.value && styles.texturaOptionSelected,
+                  ]}
+                  onPress={() => handleSelectTextura(item.value)}
+                >
+                  <Text
+                    style={[
+                      styles.texturaOptionText,
+                      formData.textura === item.value && styles.texturaOptionTextSelected,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                  {formData.textura === item.value && (
+                    <MaterialCommunityIcons name="check" size={20} color={Colors.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -575,6 +661,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textDark || '#1f2937',
   },
+  selectButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+    minHeight: 44,
+  },
+  selectButtonText: {
+    fontSize: 14,
+    color: Colors.textDark || '#1f2937',
+  },
+  placeholder: {
+    color: Colors.gray || '#9ca3af',
+  },
   textArea: {
     minHeight: 80,
     textAlignVertical: 'top',
@@ -628,6 +728,56 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.white,
     marginLeft: Spacing.sm,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderRadius: BorderRadius.lg,
+    width: '80%',
+    maxWidth: 400,
+    maxHeight: '80%',
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border || '#e5e7eb',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.dark,
+  },
+  modalList: {
+    maxHeight: 300,
+  },
+  texturaOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightBackground || '#f3f4f6',
+  },
+  texturaOptionSelected: {
+    backgroundColor: Colors.primary + '15',
+  },
+  texturaOptionText: {
+    fontSize: 15,
+    color: Colors.textDark || '#374151',
+  },
+  texturaOptionTextSelected: {
+    fontWeight: '600',
+    color: Colors.primary,
   },
 });
 
